@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/repositories/character_repository_impl.dart';
+import '../../../xml_parser/presentation/widgets/xml_parser_panel.dart';
+import '../../../xml_parser/presentation/widgets/stream_xml_parser_panel.dart';
 
 class TestPanelPage extends StatefulWidget {
   const TestPanelPage({super.key});
@@ -81,6 +83,46 @@ class _TestPanelPageState extends State<TestPanelPage> {
                   onPressed: _importCharacter,
                   icon: const Icon(Icons.file_upload),
                   label: const Text('Import Character Card'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        insetPadding: const EdgeInsets.all(24.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: const SizedBox(
+                            width: 800,
+                            height: 600,
+                            child: XmlParserPanel(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.code),
+                  label: const Text('XML Parser'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        insetPadding: const EdgeInsets.all(24.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: const SizedBox(
+                            width: 800,
+                            height: 600,
+                            child: StreamXmlParserPanel(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.waves),
+                  label: const Text('Stream XML Parser'),
                 ),
               ],
             ),
