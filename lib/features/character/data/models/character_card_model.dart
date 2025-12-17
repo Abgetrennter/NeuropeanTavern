@@ -1,3 +1,4 @@
+// ignore_for_file: invalid_annotation_target
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'character_card_model.freezed.dart';
@@ -12,8 +13,19 @@ class CharacterCardModel with _$CharacterCardModel {
     required String personality,
     required String scenario,
     @JsonKey(name: 'first_mes') required String firstMes,
-    @JsonKey(name: 'mes_example') required String mesExample,
+
+    /// 示例对话 (Example Dialogue)
+    /// 用于展示角色的说话风格和语气。
+    /// 使用 @Default('') 替代 required，防止因字段缺失导致解析崩溃。
+    @JsonKey(name: 'mes_example') @Default('') String mesExample,
+
+    /// 作者备注 (Creator Notes)
+    /// 包含角色的使用说明或背景设定。
     @JsonKey(name: 'creator_notes') String? creatorNotes,
+
+    /// 系统提示词 (System Prompt)
+    /// 针对该角色的特殊系统指令。
+    /// 保留为可空 (String?)，以便区分“无特殊指令(null)”和“空指令('')”。
     @JsonKey(name: 'system_prompt') String? systemPrompt,
     @JsonKey(name: 'post_history_instructions') String? postHistoryInstructions,
     @JsonKey(name: 'alternate_greetings') List<String>? alternateGreetings,

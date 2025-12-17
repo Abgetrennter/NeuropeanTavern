@@ -28,10 +28,21 @@ mixin _$CharacterCardModel {
   String get scenario => throw _privateConstructorUsedError;
   @JsonKey(name: 'first_mes')
   String get firstMes => throw _privateConstructorUsedError;
+
+  /// 示例对话 (Example Dialogue)
+  /// 用于展示角色的说话风格和语气。
+  /// 使用 @Default('') 替代 required，防止因字段缺失导致解析崩溃。
   @JsonKey(name: 'mes_example')
   String get mesExample => throw _privateConstructorUsedError;
+
+  /// 作者备注 (Creator Notes)
+  /// 包含角色的使用说明或背景设定。
   @JsonKey(name: 'creator_notes')
   String? get creatorNotes => throw _privateConstructorUsedError;
+
+  /// 系统提示词 (System Prompt)
+  /// 针对该角色的特殊系统指令。
+  /// 保留为可空 (String?)，以便区分“无特殊指令(null)”和“空指令('')”。
   @JsonKey(name: 'system_prompt')
   String? get systemPrompt => throw _privateConstructorUsedError;
   @JsonKey(name: 'post_history_instructions')
@@ -413,7 +424,7 @@ class _$CharacterCardModelImpl implements _CharacterCardModel {
     required this.personality,
     required this.scenario,
     @JsonKey(name: 'first_mes') required this.firstMes,
-    @JsonKey(name: 'mes_example') required this.mesExample,
+    @JsonKey(name: 'mes_example') this.mesExample = '',
     @JsonKey(name: 'creator_notes') this.creatorNotes,
     @JsonKey(name: 'system_prompt') this.systemPrompt,
     @JsonKey(name: 'post_history_instructions') this.postHistoryInstructions,
@@ -457,12 +468,23 @@ class _$CharacterCardModelImpl implements _CharacterCardModel {
   @override
   @JsonKey(name: 'first_mes')
   final String firstMes;
+
+  /// 示例对话 (Example Dialogue)
+  /// 用于展示角色的说话风格和语气。
+  /// 使用 @Default('') 替代 required，防止因字段缺失导致解析崩溃。
   @override
   @JsonKey(name: 'mes_example')
   final String mesExample;
+
+  /// 作者备注 (Creator Notes)
+  /// 包含角色的使用说明或背景设定。
   @override
   @JsonKey(name: 'creator_notes')
   final String? creatorNotes;
+
+  /// 系统提示词 (System Prompt)
+  /// 针对该角色的特殊系统指令。
+  /// 保留为可空 (String?)，以便区分“无特殊指令(null)”和“空指令('')”。
   @override
   @JsonKey(name: 'system_prompt')
   final String? systemPrompt;
@@ -686,7 +708,7 @@ abstract class _CharacterCardModel implements CharacterCardModel {
     required final String personality,
     required final String scenario,
     @JsonKey(name: 'first_mes') required final String firstMes,
-    @JsonKey(name: 'mes_example') required final String mesExample,
+    @JsonKey(name: 'mes_example') final String mesExample,
     @JsonKey(name: 'creator_notes') final String? creatorNotes,
     @JsonKey(name: 'system_prompt') final String? systemPrompt,
     @JsonKey(name: 'post_history_instructions')
@@ -724,12 +746,23 @@ abstract class _CharacterCardModel implements CharacterCardModel {
   @override
   @JsonKey(name: 'first_mes')
   String get firstMes;
+
+  /// 示例对话 (Example Dialogue)
+  /// 用于展示角色的说话风格和语气。
+  /// 使用 @Default('') 替代 required，防止因字段缺失导致解析崩溃。
   @override
   @JsonKey(name: 'mes_example')
   String get mesExample;
+
+  /// 作者备注 (Creator Notes)
+  /// 包含角色的使用说明或背景设定。
   @override
   @JsonKey(name: 'creator_notes')
   String? get creatorNotes;
+
+  /// 系统提示词 (System Prompt)
+  /// 针对该角色的特殊系统指令。
+  /// 保留为可空 (String?)，以便区分“无特殊指令(null)”和“空指令('')”。
   @override
   @JsonKey(name: 'system_prompt')
   String? get systemPrompt;

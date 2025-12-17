@@ -14,7 +14,7 @@ _$CharacterCardModelImpl _$$CharacterCardModelImplFromJson(
   personality: json['personality'] as String,
   scenario: json['scenario'] as String,
   firstMes: json['first_mes'] as String,
-  mesExample: json['mes_example'] as String,
+  mesExample: json['mes_example'] as String? ?? '',
   creatorNotes: json['creator_notes'] as String?,
   systemPrompt: json['system_prompt'] as String?,
   postHistoryInstructions: json['post_history_instructions'] as String?,

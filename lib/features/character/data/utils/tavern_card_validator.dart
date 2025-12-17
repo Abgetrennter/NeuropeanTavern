@@ -1,4 +1,4 @@
-import '../models/character_card_model.dart';
+//import '../models/character_card_model.dart';
 
 class TavernCardValidator {
   final Map<String, dynamic> card;
