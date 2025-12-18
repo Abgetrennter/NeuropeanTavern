@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/repositories/character_repository_impl.dart';
 import '../../../xml_parser/presentation/widgets/xml_parser_panel.dart';
 import '../../../xml_parser/presentation/widgets/stream_xml_parser_panel.dart';
+import '../../../chat/presentation/pages/material3_chat_ui_demo.dart';
 
 class TestPanelPage extends StatefulWidget {
   const TestPanelPage({super.key});
@@ -123,6 +124,17 @@ class _TestPanelPageState extends State<TestPanelPage> {
                   },
                   icon: const Icon(Icons.waves),
                   label: const Text('Stream XML Parser'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const Material3ChatUIDemo(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.palette),
+                  label: const Text('Material 3 Chat UI'),
                 ),
               ],
             ),

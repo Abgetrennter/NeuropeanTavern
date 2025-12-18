@@ -24,6 +24,8 @@ class _StreamXmlParserPanelState extends State<StreamXmlParserPanel> {
   // 辅助栈，用于构建树：存储 [Node, ParentNode]
   // 但因为 XmlElement 的 children 是 List，我们只需要存 Element 即可
   final List<XmlElement> _elementStack = [];
+  // 记录当前活跃（未闭合）的节点
+  final Set<XmlElement> _activeNodes = {};
   
   // 模拟流的状态
   Timer? _simulationTimer;
@@ -58,6 +60,7 @@ class _StreamXmlParserPanelState extends State<StreamXmlParserPanel> {
       _isSimulating = true;
       _roots = [];
       _elementStack.clear();
+      _activeNodes.clear();
       _simulationCursor = 0;
       _log = 'Simulation started...\n';
     });
@@ -112,6 +115,7 @@ class _StreamXmlParserPanelState extends State<StreamXmlParserPanel> {
           _elementStack.last.children.add(newElement);
         }
         _elementStack.add(newElement);
+        _activeNodes.add(newElement);
 
       } else if (event is XmlTagCloseEvent) {
         // 找到最近的匹配标签并弹出
@@ -133,7 +137,8 @@ class _StreamXmlParserPanelState extends State<StreamXmlParserPanel> {
            
            if (matchIndex != -1) {
              while (_elementStack.length > matchIndex) {
-               _elementStack.removeLast();
+               final popped = _elementStack.removeLast();
+               _activeNodes.remove(popped);
              }
            }
         }
@@ -295,15 +300,23 @@ class _StreamXmlParserPanelState extends State<StreamXmlParserPanel> {
         ),
       );
     } else if (node is XmlElement) {
+      final isActive = _activeNodes.contains(node);
+      // 使用 Key 强制重建组件以更新展开状态
+      // 当节点从活跃变为非活跃时，Key 改变，组件重建，initiallyExpanded 变为 false (默认值)
+      // 注意：这里我们希望活跃时展开，非活跃时收起。
+      // 但 ExpansionTile 没有直接的 expanded 属性，只能通过 initiallyExpanded + Key 来控制。
+      
       return Card(
         margin: const EdgeInsets.symmetric(vertical: 2.0),
         elevation: 0,
-        color: Colors.white,
+        color: isActive ? Colors.blue[50] : Colors.white, // 活跃节点稍微高亮一下
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: Colors.blue[100]!),
+          side: BorderSide(color: isActive ? Colors.blue : Colors.grey[300]!),
           borderRadius: BorderRadius.circular(4),
         ),
         child: ExpansionTile(
+          // 关键：Key 包含 isActive 状态
+          key: ValueKey('${node.hashCode}_$isActive'),
           title: Row(
             children: [
               Text(
@@ -330,9 +343,25 @@ class _StreamXmlParserPanelState extends State<StreamXmlParserPanel> {
                   ),
                 ),
               ],
+              if (isActive)
+                const Padding(
+                  padding: EdgeInsets.only(left: 8.0),
+                  child: SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
             ],
           ),
-          initiallyExpanded: true,
+          // 活跃时展开，非活跃时收起（因为 Key 变了，会重新初始化，此时 initiallyExpanded 为 false）
+          // 等等，如果 initiallyExpanded 为 false，那它一开始就是收起的。
+          // 我们希望：
+          // 1. 刚创建时（活跃）：展开
+          // 2. 变为非活跃时：收起
+          // 所以：isActive 为 true 时 initiallyExpanded = true
+          // isActive 为 false 时 initiallyExpanded = false
+          initiallyExpanded: isActive,
           dense: true,
           childrenPadding: const EdgeInsets.only(left: 16.0),
           children: node.children.map(_buildNodeView).toList(),
