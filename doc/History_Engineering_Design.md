@@ -119,7 +119,8 @@ class ContextNodes extends Table {
   TextColumn get parentId => text().nullable().references(ContextNodes, #id)(); // 父上下文节点
   
   // 上下文快照（继承自git文档）
-  TextColumn get stateSnapshot => text()(); // JSON格式，存储RPG状态快照
+  TextColumn get stateSnapshot => text()(); // JSON格式，存储RPG状态快照 (Keyframe) 或 增量 (Delta)
+  BoolColumn get isKeyframe => boolean().withDefault(const Constant(false))(); // 是否为关键帧
   TextColumn get ragPosition => text()(); // RAG链表位置或快照索引
   TextColumn get eventHistory => text()(); // JSON格式，小说中已确认的事件历史
   

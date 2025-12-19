@@ -1,6 +1,6 @@
 # PyTavern 系统架构设计文档 (System Architecture Design Document)
 
-**版本**: 2.0
+**版本**: 3.0
 **状态**: Draft
 **最后更新**: 2025-12-19
 **参考文档**: `doc/合并.md`, `doc/plan.md`, `doc/升级版设计.md`
@@ -8,6 +8,12 @@
 ---
 
 ## 1. 架构概览 (Architecture Overview)
+本项目旨在构建一个高性能、高可定制的 AI 角色扮演（RPG）客户端。现有解决方案（如 SillyTavern）在处理复杂逻辑时面临性能瓶颈（前端重逻辑）和上下文管理混乱（字符串拼接难以维护）的问题。
+### 核心目标
+1.  **架构解耦**：实现 UI（Flutter）与逻辑（Dart Orchestrator）的彻底分离。
+2.  **确定性编排**：通过代码控制流程，通过 LLM 处理语义，拒绝“让 LLM 决定一切”。
+3.  **时空一致性**：引入“多重宇宙树（Turn-based Tree）”模型管理对话历史，支持无损的回溯、分支（Reroll）和状态快照。
+4.  **结构化 Prompt**：采用 PromptAST（抽象语法树）替代传统的字符串拼接，实现模块化的上下文装配。
 
 本系统采用 **混合 Agent 架构 (Hybrid Agent Architecture)**，核心设计理念是 **“数据与逻辑分离，确定性编排与概率性生成结合”**。
 
@@ -19,12 +25,12 @@
     *   **Flutter UI**: 原生高性能聊天界面。
     *   **Webview**: 承载动态 HTML/JS 组件（如状态栏）。
 2.  **编排层 (Orchestration Layer)**: 系统的“大脑”，负责流程控制与 Prompt 组装。
-    *   **Orchestrator**: 核心调度器。
-    *   **Prompt Engine**: 负责将数据组装为最终 Prompt。
+    *   **Orchestrator**: 插件化流水线执行器。
+    *   **Plugins**: 具体的逻辑单元（如 Prompt Assembler, Regex Cleaner）。
 3.  **数据与基础设施层 (Data & Infrastructure Layer)**: 负责数据的存储、检索与聚合。
-    *   **Context Pipeline**: **核心组件**，统一的数据聚合服务。
+    *   **World Engine**: **核心组件**，上下文快照提供者 (Context Snapshot Provider)。
     *   **History Engine**: 基于树状结构的历史管理。
-    *   **World Engine**: 规则、Lore 与状态管理。
+    *   **Vector DB**: 语义检索支持。
 
 ### 1.2 架构拓扑图
 
@@ -43,42 +49,45 @@ graph TD
         UI_Webview[Webview 组件]:::ui
     end
 
-    subgraph Orchestration [编排层]
-        Orchestrator[Orchestrator (总线)]:::orch
-        Prompt_Assembler[Prompt 组装器]:::orch
-        SXML_Parser[SXML 解析器]:::orch
-    end
-
-    subgraph Agents [Agent 服务]
-        Planner[Planner Agent]:::ext
-        Generator[Core LLM]:::ext
-    end
-
-    subgraph Data_Infra [数据层 - Context Pipeline]
-        Pipeline_Service[Context Pipeline Service]:::data
+    subgraph Orchestration [编排层PluginRunner]
+        Orchestrator[Orchestrator总线]:::orch
         
-        subgraph Engines
-            History_Engine[History Engine (Tree)]:::data
-            World_Engine[World Engine (State/Lore)]:::data
-            Vector_DB[Vector DB (RAG)]:::data
+        subgraph Plugins [插件流水线]
+            P_Planner[Planner Plugin]:::orch
+            P_Assembler[Prompt Assembler]:::orch
+            P_Cleaner[Regex Cleaner]:::orch
+            P_Parser[SXML Parser]:::orch
         end
+    end
+
+    subgraph Data_Infra [数据层 WorldEngine]
+        World_Engine[World Engine ContextProvider]:::data
+        
+        subgraph Internal_Modules
+            Context_Pipeline[Context Pipeline]:::data
+            History_Manager[History Manager]:::data
+            Lore_Manager[Lore/RAG Manager]:::data
+            State_Manager[State Manager]:::data
+        end
+    end
+    
+    subgraph External [外部服务]
+        LLM[Core LLM]:::ext
     end
 
     %% 连接
     User <--> UI_Chat
     UI_Chat <--> Orchestrator
-    UI_Webview <--> Orchestrator
-
-    Orchestrator --> Planner
-    Orchestrator --> Generator
-    Orchestrator --> SXML_Parser
-    Orchestrator --> Prompt_Assembler
-
-    Prompt_Assembler -- "请求上下文快照" --> Pipeline_Service
-    Pipeline_Service -- "聚合数据" --> Engines
     
-    SXML_Parser -- "状态变更/新历史" --> History_Engine
-    SXML_Parser -- "状态变更" --> World_Engine
+    Orchestrator --> World_Engine
+    Orchestrator --> Plugins
+    
+    P_Assembler -- "请求快照" --> World_Engine
+    World_Engine -- "返回 ContextSnapshot" --> P_Assembler
+    
+    P_Assembler --> LLM
+    LLM --> P_Parser
+    P_Parser -- "更新状态" --> World_Engine
 ```
 
 ---
@@ -97,6 +106,7 @@ graph TD
     *   ❌ `<content>1 < 2</content>`
 3.  **浅层嵌套**: 推荐最大嵌套深度不超过 2 层，降低解析复杂度。
 4.  **容错性**: 解析器支持自动闭合未闭合的标签（Auto-closing），以应对 LLM 输出中断的情况。
+5.  **严格白名单 (Strict Whitelist)**: 解析器仅识别预定义的标签（如 `<thought>`, `<reply>`）。所有不在白名单内的 `<` 符号（如数学公式 `1 < 2`）一律视为普通文本，不进行标签解析。
 
 ### 2.2 标准标签集
 
@@ -123,140 +133,152 @@ LLM 的输出必须遵循以下结构：
 </root>
 ```
 
-### 2.3 解析逻辑 (基于 Dart 实现)
+---
 
-解析器 (`StreamXmlParser`) 采用正则驱动的状态机模式：
-1.  **流式输入**: 逐字符/逐块接收 LLM 输出。
-2.  **实时事件**: 触发 `onTagOpen`, `onTagClose`, `onText` 事件。
-3.  **自动修复**: 流结束时，自动闭合栈中剩余的所有标签，确保数据完整性。
+## 3. World Engine: 上下文快照提供者 (Context Snapshot Provider)
+
+**World Engine** 是数据层的核心，它不再仅仅是静态数据的仓库，而是升级为 **动态上下文生成引擎**。
+
+### 3.1 核心职责
+
+1.  **数据托管**: 管理所有上下文无关的内容（Lorebook, Presets, World Rules）。
+2.  **快照生成**: 提供 `getContextSnapshot(pointer)` 接口。当 Orchestrator 请求时，它根据当前的 Session Pointer，聚合所有相关数据，生成一个静态的、不可变的快照对象。
+3.  **状态管理**: 维护 RPG 变量、角色状态，并处理来自 Orchestrator 的状态更新请求。
+
+### 3.2 逻辑视图：多维上下文链 (Multi-dimensional Context Chains)
+
+虽然数据在物理上以 **增量 (Incremental)** 形式存储在 `ContextNode` 中，但在逻辑上，World Engine 将其投影为数条平行的 **上下文链网 (Context Chains Net)**。Orchestrator 看到的是一个凝结了现在世界线内容的快照。
+
+1.  **History Chain (历史链)**
+    *   **内容**: 标准对话记录 (User Message / AI Message)。
+    *   **逻辑**: 从 Root 到 Current Pointer 的线性投影。
+    *   **作用**: 提供 LLM 理解剧情所需的上下文连贯性。
+
+2.  **State Chain (状态链)**
+    *   **内容**: 结构化的 RPG 数值与状态 (JSON)。
+    *   **策略**: **关键帧 + 增量 (Keyframe + Delta)**。每隔 N 个节点存储一次全量快照（Keyframe），中间节点仅存储相对于上一个节点的变更 Diff（Delta）。
+    *   **作用**: 确保“时间旅行”时，世界状态能精确回滚到那一刻，同时控制数据库体积。
+
+3.  **RAG Chain (检索增强链)**
+    *   **内容**: 向量化的记忆片段与 Lore 条目。
+    *   **逻辑**: 基于当前 History Chain 的语义检索结果。
+    *   **作用**: 动态注入相关的背景知识。
+
+4.  **Event Manager (事件管理器) [Future Implementation]**
+    *   **定位**: 复杂的**状态机 (State Machine)**，而非简单的数据链。
+    *   **内容**: 触发器 (Triggers)、任务 (Quests)、脚本事件 (Scripted Events)。
+    *   **状态**: *Reserved for future development.*
+
+### 3.3 Context Pipeline 工作流
+
+当 Orchestrator 请求快照时，Pipeline 执行以下**投影 (Projection)** 操作：
+若为顺延，则选取当前快照进行更新。否则进入快照重建流程：
+1.  **Trace**: 根据 Session Pointer 回溯树路径。
+2.  **Project**:
+    *   合并路径上的文本 -> 生成 **History Chain**。
+    *   提取当前节点的 State -> 生成 **State Chain**。
+    *   基于 History 进行向量检索 -> 生成 **RAG Chain**。
+3.  **Assemble**: 将上述链的内容结合 Presets，封装为不可变的 `ContextSnapshot`。
 
 ---
 
-## 3. 上下文管道设计 (Context Pipeline Design)
+## 4. Orchestrator: 插件化流水线 (Plugin-based Pipeline)
 
-**Context Pipeline** 是数据层的核心聚合器，它作为**历史与世界观的统率系统**，负责维护数据的完整性与一致性。它不负责“如何用数据”，只负责“提供高质量的数据”。
+**Orchestrator** 是逻辑层的核心，它被重新设计为一个 **Pipeline Runner**。它不包含具体的业务逻辑，而是负责按顺序执行注册的插件。
 
-### 3.1 扩展性设计 (Extensibility Design)
+### 4.1 插件化架构
 
-Context Pipeline 采用 **插件化架构 (Plugin-based Architecture)**，不再硬编码固定的数据链。它由以下核心组件构成：
+Orchestrator 维护一个插件列表，每个插件实现特定的接口：
 
-1.  **Context Source Registry (源注册表)**: 允许注册新的数据提供者（如 `HistorySource`, `WorldStateSource`, `RAGSource`）。
-2.  **Context Store (上下文仓库)**: 一个通用的键值存储，用于存放非链式、非结构化的临时数据。
-    *   **用途**: 存储当前的 `Generation Record`、临时草稿、调试信息、或者插件注入的临时变量。
-    *   **特性**: 不同节点之间的内容往往无关，不成链状。
-
-### 3.2 核心数据通道 (Core Data Channels)
-
-虽然架构支持扩展，但系统默认内置以下核心通道：
-
-1.  **History Chain (历史链)**:
-    *   **源**: `History Engine`。
-    *   **内容**: 标准对话记录 (User/AI)。
-    *   **策略**: 滑动窗口 (Sliding Window)。
-
-2.  **State Chain (状态链)**:
-    *   **源**: `World Engine`。
-    *   **内容**: RPG 数值 (HP, MP)、位置、时间。
-    *   **策略**: 全量保留，高优先级。
-
-3.  **RAG Chain (检索增强链)**:
-    *   **源**: `Vector DB`。
-    *   **内容**: 记忆片段。
-    *   **策略**: 语义检索 + Token 预算裁剪。
-
-4.  **Event Manager (事件管理器) [Future Implementation]**:
-    *   **定位**: 不仅仅是数据链，而是一个复杂的**状态机**。
-    *   **职责**: 管理事件的生命周期（触发 -> 进行中 -> 结束/结算）。
-    *   **注释**: 留作未来开发
-
-### 3.3 管道结构图
-
-```mermaid
-graph LR
-    subgraph Data_Sources [数据源插件]
-        H[History Source]
-        W[State Source]
-        R[RAG Source]
-        E[Event Manager (Future)]
-        O[Other Plugins...]
-    end
-
-    subgraph Context_Pipeline [Context Pipeline Service]
-        direction TB
-        Registry[源注册表]
-        Store[Context Store (KV)]
-        Aggregator[聚合与裁剪]
-    end
-
-    subgraph Output [输出]
-        Context_Object[Context Snapshot]
-    end
-
-    H & W & R & E & O -.->|注册| Registry
-    Registry -->|拉取数据| Aggregator
-    Store -->|注入临时数据| Aggregator
-    Aggregator --> Context_Object
+```dart
+abstract class OrchestratorPlugin {
+  Future<void> execute(OrchestratorContext context);
+}
 ```
 
----
+### 4.2 核心插件示例
 
-## 4. 详细数据流 (Detailed Data Flow)
-
-本节描述从用户输入到最终状态更新的完整数据流转。
-
-### 4.1 阶段一：上下文组装 (Context Assembly)
-
-1.  **用户输入**: 用户发送消息 "攻击哥布林"。
-2.  **Orchestrator 请求**: 向 `Context Pipeline` 请求当前上下文快照。
-3.  **Pipeline 响应**: 返回包含 History, State, Lore 的结构化对象 `ContextSnapshot`。
-4.  **Prompt 组装**: `Prompt Assembler` 根据 `ContextSnapshot` 和预设模板，构建最终 Prompt 字符串。
-
-### 4.2 阶段二：生成与解析 (Generation & Parsing)
-
-1.  **LLM 生成**: `Core LLM` 接收 Prompt，开始流式输出 SXML。
-2.  **流式解析**: `SXML Parser` 实时监听输出流。
-    *   检测到 `<thought>`: 缓冲思维链内容。
-    *   检测到 `<state_update>`: 解析键值对，准备更新。
-    *   检测到 `<reply>`: 实时推送到 UI 显示。
-
-### 4.3 阶段三：状态同步 (State Synchronization)
-
-1.  **事务提交**: 生成结束后，Orchestrator 收集所有解析出的数据。
-2.  **历史写入**: 调用 `History Engine`，创建新的 `Context Node` (包含 User Input) 和 `Generation Record` (包含 AI Reply)。
-3.  **状态更新**:
-    *   将 `<state_update>` 中的变更应用到 `World Engine`。
-    *   生成新的状态快照，并关联到当前的 `Context Node` 上（实现时间旅行支持）。
+1.  **Planner Plugin**:
+    *   分析用户输入，决定是否需要调用工具或修改上下文检索策略。
+2.  **Prompt Assembler Plugin**:
+    *   **核心插件**。
+    *   向 `World Engine` 请求 `ContextSnapshot`。
+    *   将快照中的数据（History, Lore, State）按照 SXML 模板组装成最终的 Prompt 字符串。
+3.  **LLM Invoker Plugin**:
+    *   调用 LLM API，获取流式响应。
+4.  **SXML Parser Plugin**:
+    *   实时解析 LLM 的 SXML 输出。
+    *   提取 `<reply>` 推送给 UI。
+    *   提取 `<state_update>` 准备后续处理。
+5.  **State Updater Plugin**:
+    *   将解析出的状态变更提交回 `World Engine`。
 
 ---
 
-## 5. 请求/响应序列图 (Sequence Diagram)
+## 5. 详细数据流 (Detailed Data Flow)
+
+本节描述从用户输入到状态更新的完整数据流转。
+
+### 5.1 阶段一：准备与组装
+
+1.  **用户输入**: 用户发送消息。
+2.  **Orchestrator 启动**: 初始化流水线上下文。
+3.  **Prompt Assembler**:
+    *   调用 `WorldEngine.getContextSnapshot()`。
+    *   World Engine 内部 Pipeline 运行：检索 Lore -> 获取历史 -> 读取状态。
+    *   返回 `ContextSnapshot`。
+    *   Assembler 将 Snapshot 渲染为 SXML Prompt。
+
+### 5.2 阶段二：生成与解析
+
+1.  **LLM Invoker**: 发送 Prompt 给 LLM。
+2.  **SXML Parser**:
+    *   监听流式输出。
+    *   解析 `<thought>`, `<state_update>`, `<reply>`。
+    *   实时更新 UI。
+
+### 5.3 阶段三：更新与持久化
+
+1.  **State Updater**:
+    *   收集所有 `<state_update>`。
+    *   调用 `WorldEngine.updateState(delta)`。
+    *   调用 `HistoryManager.addNode()` 保存对话历史。
+2.  **World Engine**:
+    *   应用状态变更。
+    *   更新指针，准备下一轮对话。
+
+---
+
+## 6. 请求/响应序列图 (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant O as Orchestrator
-    participant P as Context Pipeline
+    participant O as Orchestrator (Runner)
+    participant PA as Prompt Assembler
+    participant WE as World Engine
     participant L as LLM
-    participant S as SXML Parser
-    participant H as History Engine
+    participant SP as SXML Parser
 
     U->>O: 发送消息
     
-    Note over O, P: 1. 获取数据
-    O->>P: getContextSnapshot(sessionId)
-    P-->>O: ContextSnapshot (History, State, Lore)
-
-    Note over O, L: 2. 生成
-    O->>O: assemblePrompt(Snapshot)
+    Note over O, WE: 插件 1: 组装 Prompt
+    O->>PA: execute()
+    PA->>WE: getContextSnapshot()
+    WE->>WE: Run Internal Pipeline
+    WE-->>PA: ContextSnapshot
+    PA->>PA: Render SXML Prompt
+    
+    Note over O, L: 插件 2: 调用 LLM
     O->>L: streamGenerate(Prompt)
-
-    Note over L, S: 3. 解析与展示
+    
+    Note over O, SP: 插件 3: 解析流
     loop Streaming
-        L-->>S: SXML Chunk
-        S-->>O: Parsed Event (Tag/Text)
-        O-->>U: Update UI (Reply)
+        L-->>SP: SXML Chunk
+        SP-->>O: Parsed Events
+        O-->>U: Update UI
     end
-
-    Note over O, H: 4. 持久化
-    O->>H: addNode(UserMsg, StateSnapshot)
-    O->>H: addRecord(AIReply, SXML_Data)
+    
+    Note over O, WE: 插件 4: 更新状态
+    O->>WE: updateState(delta)
+    O->>WE: saveHistory(node)
