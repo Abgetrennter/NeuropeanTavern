@@ -29,7 +29,7 @@ void main() {
       // Assert
       result.when(
         success: (data) => expect(data, testResult),
-        failure: (_, __, ___) => fail('Should be success'),
+        failure: (_, _, _) => fail('Should be success'),
       );
       
       verify(mockBridge.invokeMethod<String>(testMethod)).called(1);

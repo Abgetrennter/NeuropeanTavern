@@ -116,7 +116,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 24),
@@ -295,7 +295,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
                                 ),
                                 decoration: BoxDecoration(
                                   // 尝试使用 surfaceContainerHigh，如果不可用则使用 surfaceVariant
-                                  color: colorScheme.surfaceVariant.withOpacity(0.9),
+                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -336,7 +336,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.memory, size: 64, color: colorScheme.primary.withOpacity(0.5)),
+                    Icon(Icons.memory, size: 64, color: colorScheme.primary.withValues(alpha: 0.5)),
                     const SizedBox(height: 16),
                     Text(
                       'Memory Management',
@@ -354,7 +354,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.settings, size: 64, color: colorScheme.primary.withOpacity(0.5)),
+                    Icon(Icons.settings, size: 64, color: colorScheme.primary.withValues(alpha: 0.5)),
                     const SizedBox(height: 16),
                     Text(
                       'Settings',
@@ -390,9 +390,9 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isUser
-              ? colorScheme.primaryContainer.withOpacity(0.8)
+              ? colorScheme.primaryContainer.withValues(alpha: 0.8)
               // 尝试使用 surfaceContainerLow，如果不可用则使用 surfaceVariant
-              : colorScheme.secondaryContainer.withOpacity(0.5),
+              : colorScheme.secondaryContainer.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -402,7 +402,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
             if (!isUser) ...[
               CircleAvatar(
                 radius: 20,
-                backgroundColor: colorScheme.primary.withOpacity(0.2),
+                backgroundColor: colorScheme.primary.withValues(alpha: 0.2),
                 child: Text(
                   name[0],
                   style: TextStyle(color: colorScheme.primary),
@@ -420,7 +420,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
                     style: TextStyle(
                       fontSize: 12,
                       color: isUser
-                          ? colorScheme.onPrimaryContainer.withOpacity(0.7)
+                          ? colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
                           : colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -462,7 +462,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
         color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -2),
             blurRadius: 4,
           ),
@@ -504,7 +504,7 @@ class _Material3ChatUIDemoState extends State<Material3ChatUIDemo> {
                     hintText: 'Type a message...',
                     hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
                     filled: true,
-                    fillColor: colorScheme.surfaceVariant.withOpacity(0.3),
+                    fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
