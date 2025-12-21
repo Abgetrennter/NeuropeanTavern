@@ -1,4 +1,4 @@
-# PyTavern 系统架构设计文档 (System Architecture Design Document)
+# Clotho 系统架构设计文档 (System Architecture Design Document)
 
 **版本**: 3.0
 **状态**: Draft
@@ -10,7 +10,7 @@
 ## 1. 架构概览 (Architecture Overview)
 本项目旨在构建一个高性能、高可定制的 AI 角色扮演（RPG）客户端。现有解决方案（如 SillyTavern）在处理复杂逻辑时面临性能瓶颈（前端重逻辑）和上下文管理混乱（字符串拼接难以维护）的问题。
 ### 核心目标
-1.  **架构解耦**：实现 UI（Flutter）与逻辑（Dart Orchestrator）的彻底分离。
+1.  **架构解耦**：实现 UI（Flutter）与逻辑（Dart Jacquard）的彻底分离。
 2.  **确定性编排**：通过代码控制流程，通过 LLM 处理语义，拒绝“让 LLM 决定一切”。
 3.  **时空一致性**：引入“多重宇宙树（Turn-based Tree）”模型管理对话历史，支持无损的回溯、分支（Reroll）和状态快照。
 4.  **结构化 Prompt**：采用 PromptAST（抽象语法树）替代传统的字符串拼接，实现模块化的上下文装配。
@@ -24,11 +24,11 @@
 1.  **表现层 (Presentation Layer)**: 负责用户交互与界面渲染。
     *   **Flutter UI**: 原生高性能聊天界面。
     *   **Webview**: 承载动态 HTML/JS 组件（如状态栏）。
-2.  **编排层 (Orchestration Layer)**: 系统的“大脑”，负责流程控制与 Prompt 组装。
-    *   **Orchestrator**: 插件化流水线执行器。
-    *   **Plugins**: 具体的逻辑单元（如 Prompt Assembler, Regex Cleaner）。
+2.  **编排层 (Jacquard Layer)**: 系统的“大脑”，负责流程控制与 Prompt 组装。
+    *   **Jacquard**: 插件化流水线执行器。
+    *   **Shuttles**: 具体的逻辑单元（如 Prompt Assembler, Regex Cleaner）。
 3.  **数据与基础设施层 (Data & Infrastructure Layer)**: 负责数据的存储、检索与聚合。
-    *   **World Engine**: **核心组件**，上下文快照提供者 (Context Snapshot Provider)。
+    *   **Mnemosyne**: **核心组件**，上下文快照提供者 (Context Snapshot Provider)。
     *   **History Engine**: 基于树状结构的历史管理。
     *   **Vector DB**: 语义检索支持。
 
@@ -49,19 +49,19 @@ graph TD
         UI_Webview[Webview 组件]:::ui
     end
 
-    subgraph Orchestration [编排层PluginRunner]
-        Orchestrator[Orchestrator总线]:::orch
+    subgraph Jacquard [编排层PluginRunner]
+        Jacquard[Jacquard总线]:::orch
         
-        subgraph Plugins [插件流水线]
+        subgraph Shuttles [插件流水线]
             P_Planner[Planner Plugin]:::orch
             P_Assembler[Prompt Assembler]:::orch
             P_Cleaner[Regex Cleaner]:::orch
-            P_Parser[SXML Parser]:::orch
+            P_Parser[Filament Parser]:::orch
         end
     end
 
-    subgraph Data_Infra [数据层 WorldEngine]
-        World_Engine[World Engine ContextProvider]:::data
+    subgraph Data_Infra [数据层 Mnemosyne]
+        Mnemosyne[Mnemosyne ContextProvider]:::data
         
         subgraph Internal_Modules
             Context_Pipeline[Context Pipeline]:::data
@@ -77,24 +77,24 @@ graph TD
 
     %% 连接
     User <--> UI_Chat
-    UI_Chat <--> Orchestrator
+    UI_Chat <--> Jacquard
     
-    Orchestrator --> World_Engine
-    Orchestrator --> Plugins
+    Jacquard --> Mnemosyne
+    Jacquard --> Shuttles
     
-    P_Assembler -- "请求快照" --> World_Engine
-    World_Engine -- "返回 ContextSnapshot" --> P_Assembler
+    P_Assembler -- "请求快照" --> Mnemosyne
+    Mnemosyne -- "返回 Punchcards" --> P_Assembler
     
     P_Assembler --> LLM
     LLM --> P_Parser
-    P_Parser -- "更新状态" --> World_Engine
+    P_Parser -- "更新状态" --> Mnemosyne
 ```
 
 ---
 
-## 2. SXML 协议定义 (SXML Protocol)
+## 2. 简化XML 协议定义 (Filament)
 
-为了确保 LLM 输出的可解析性与鲁棒性，我们定义了 **SXML (Simplified XML)** 协议。该协议是 XML 的严格子集，专为流式解析和 LLM 生成优化。
+为了确保 LLM 输出的可解析性与鲁棒性，我们定义了一个简化版的XML协议 Filament 。该协议是 XML 的严格子集，专为流式解析和 LLM 生成优化。
 
 ### 2.1 核心语法规则
 
@@ -135,19 +135,19 @@ LLM 的输出必须遵循以下结构：
 
 ---
 
-## 3. World Engine: 上下文快照提供者 (Context Snapshot Provider)
+## 3. Mnemosyne: 上下文快照提供者 (Context Snapshot Provider)
 
-**World Engine** 是数据层的核心，它不再仅仅是静态数据的仓库，而是升级为 **动态上下文生成引擎**。
+**Mnemosyne** 是数据层的核心，它不再仅仅是静态数据的仓库，而是升级为 **动态上下文生成引擎**。
 
 ### 3.1 核心职责
 
 1.  **数据托管**: 管理所有上下文无关的内容（Lorebook, Presets, World Rules）。
-2.  **快照生成**: 提供 `getContextSnapshot(pointer)` 接口。当 Orchestrator 请求时，它根据当前的 Session Pointer，聚合所有相关数据，生成一个静态的、不可变的快照对象。
-3.  **状态管理**: 维护 RPG 变量、角色状态，并处理来自 Orchestrator 的状态更新请求。
+2.  **快照生成**: 提供 `getPunchcards(pointer)` 接口。当 Jacquard 请求时，它根据当前的 Session Pointer，聚合所有相关数据，生成一个静态的、不可变的快照对象。
+3.  **状态管理**: 维护 RPG 变量、角色状态，并处理来自 Jacquard 的状态更新请求。
 
 ### 3.2 逻辑视图：多维上下文链 (Multi-dimensional Context Chains)
 
-虽然数据在物理上以 **增量 (Incremental)** 形式存储在 `ContextNode` 中，但在逻辑上，World Engine 将其投影为数条平行的 **上下文链网 (Context Chains Net)**。Orchestrator 看到的是一个凝结了现在世界线内容的快照。
+虽然数据在物理上以 **增量 (Incremental)** 形式存储在 `ContextNode` 中，但在逻辑上，Mnemosyne 将其投影为数条平行的 **上下文链网 (Context Chains Net)**。Jacquard 看到的是一个凝结了现在世界线内容的快照。
 
 1.  **History Chain (历史链)**
     *   **内容**: 标准对话记录 (User Message / AI Message)。
@@ -171,28 +171,28 @@ LLM 的输出必须遵循以下结构：
 
 ### 3.3 Context Pipeline 工作流
 
-当 Orchestrator 请求快照时，Pipeline 执行以下**投影 (Projection)** 操作：
+当 Jacquard 请求快照时，Pipeline 执行以下**投影 (Projection)** 操作：
 若为顺延，则选取当前快照进行更新。否则进入快照重建流程：
 1.  **Trace**: 根据 Session Pointer 回溯树路径。
 2.  **Project**:
     *   合并路径上的文本 -> 生成 **History Chain**。
     *   提取当前节点的 State -> 生成 **State Chain**。
     *   基于 History 进行向量检索 -> 生成 **RAG Chain**。
-3.  **Assemble**: 将上述链的内容结合 Presets，封装为不可变的 `ContextSnapshot`。
+3.  **Assemble**: 将上述链的内容结合 Presets，封装为不可变的 `Punchcards`。
 
 ---
 
-## 4. Orchestrator: 插件化流水线 (Plugin-based Pipeline)
+## 4. Jacquard: 插件化流水线 (Plugin-based Pipeline)
 
-**Orchestrator** 是逻辑层的核心，它被重新设计为一个 **Pipeline Runner**。它不包含具体的业务逻辑，而是负责按顺序执行注册的插件。
+**Jacquard** 是逻辑层的核心，它被重新设计为一个 **Pipeline Runner**。它不包含具体的业务逻辑，而是负责按顺序执行注册的插件。
 
 ### 4.1 插件化架构
 
-Orchestrator 维护一个插件列表，每个插件实现特定的接口：
+Jacquard 维护一个插件列表，每个插件实现特定的接口：
 
 ```dart
-abstract class OrchestratorPlugin {
-  Future<void> execute(OrchestratorContext context);
+abstract class JacquardPlugin {
+  Future<void> execute(JacquardContext context);
 }
 ```
 
@@ -202,16 +202,16 @@ abstract class OrchestratorPlugin {
     *   分析用户输入，决定是否需要调用工具或修改上下文检索策略。
 2.  **Prompt Assembler Plugin**:
     *   **核心插件**。
-    *   向 `World Engine` 请求 `ContextSnapshot`。
-    *   将快照中的数据（History, Lore, State）按照 SXML 模板组装成最终的 Prompt 字符串。
+    *   向 `Mnemosyne` 请求 `Punchcards`。
+    *   将快照中的数据（History, Lore, State）按照 Filament 模板组装成最终的 Prompt 字符串。
 3.  **LLM Invoker Plugin**:
     *   调用 LLM API，获取流式响应。
-4.  **SXML Parser Plugin**:
-    *   实时解析 LLM 的 SXML 输出。
+4.  **Filament Parser Plugin**:
+    *   实时解析 LLM 的 Filament 输出。
     *   提取 `<reply>` 推送给 UI。
     *   提取 `<state_update>` 准备后续处理。
 5.  **State Updater Plugin**:
-    *   将解析出的状态变更提交回 `World Engine`。
+    *   将解析出的状态变更提交回 `Mnemosyne`。
 
 ---
 
@@ -222,17 +222,17 @@ abstract class OrchestratorPlugin {
 ### 5.1 阶段一：准备与组装
 
 1.  **用户输入**: 用户发送消息。
-2.  **Orchestrator 启动**: 初始化流水线上下文。
+2.  **Jacquard 启动**: 初始化流水线上下文。
 3.  **Prompt Assembler**:
-    *   调用 `WorldEngine.getContextSnapshot()`。
-    *   World Engine 内部 Pipeline 运行：检索 Lore -> 获取历史 -> 读取状态。
-    *   返回 `ContextSnapshot`。
-    *   Assembler 将 Snapshot 渲染为 SXML Prompt。
+    *   调用 `Mnemosyne.getPunchcards()`。
+    *   Mnemosyne 内部 Pipeline 运行：检索 Lore -> 获取历史 -> 读取状态。
+    *   返回 `Punchcards`。
+    *   Assembler 将 Snapshot 渲染为 Filament Prompt。
 
 ### 5.2 阶段二：生成与解析
 
 1.  **LLM Invoker**: 发送 Prompt 给 LLM。
-2.  **SXML Parser**:
+2.  **Filament Parser**:
     *   监听流式输出。
     *   解析 `<thought>`, `<state_update>`, `<reply>`。
     *   实时更新 UI。
@@ -241,9 +241,9 @@ abstract class OrchestratorPlugin {
 
 1.  **State Updater**:
     *   收集所有 `<state_update>`。
-    *   调用 `WorldEngine.updateState(delta)`。
+    *   调用 `Mnemosyne.updateState(delta)`。
     *   调用 `HistoryManager.addNode()` 保存对话历史。
-2.  **World Engine**:
+2.  **Mnemosyne**:
     *   应用状态变更。
     *   更新指针，准备下一轮对话。
 
@@ -254,27 +254,27 @@ abstract class OrchestratorPlugin {
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant O as Orchestrator (Runner)
+    participant O as Jacquard (Runner)
     participant PA as Prompt Assembler
-    participant WE as World Engine
+    participant WE as Mnemosyne
     participant L as LLM
-    participant SP as SXML Parser
+    participant SP as Filament Parser
 
     U->>O: 发送消息
     
     Note over O, WE: 插件 1: 组装 Prompt
     O->>PA: execute()
-    PA->>WE: getContextSnapshot()
+    PA->>WE: getPunchcards()
     WE->>WE: Run Internal Pipeline
-    WE-->>PA: ContextSnapshot
-    PA->>PA: Render SXML Prompt
+    WE-->>PA: Punchcards
+    PA->>PA: Render Filament Prompt
     
     Note over O, L: 插件 2: 调用 LLM
     O->>L: streamGenerate(Prompt)
     
     Note over O, SP: 插件 3: 解析流
     loop Streaming
-        L-->>SP: SXML Chunk
+        L-->>SP: Filament Chunk
         SP-->>O: Parsed Events
         O-->>U: Update UI
     end
