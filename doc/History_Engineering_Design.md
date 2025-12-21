@@ -1,8 +1,8 @@
-# 历史记录系统工程设计方案
+# Clotho 历史记录系统工程设计方案
 
 ## 概述
 
-本文档整合了 `doc/git`（存储结构与存档语义）、`doc/类git设计对话消息.md`（多重宇宙树理论与投影算法）以及 `doc/SDD.md`（Flutter/Drift/Clean Architecture 工程现状）三份文档的核心概念，设计了一套完整可行的历史记录落地工程方案。
+本文档整合了 `doc/合并.md`（存储结构与存档语义）、`doc/类git设计对话消息.md`（多重宇宙树理论与投影算法）以及 `doc/SDD.md`（Flutter/Drift/Clean Architecture 工程现状）三份文档的核心概念，设计了一套完整可行的历史记录落地工程方案。
 
 本方案采用**多重宇宙对话树模型**作为理论基础，结合**上下文节点**和**消息节点**的双层结构，通过**线性投影机制**实现与LLM的无缝对接，最终在Flutter + Drift + Riverpod技术栈上实现完整落地。
 
@@ -23,9 +23,9 @@
 
 | 概念 | 来源 | 定义 |
 |------|------|------|
-| 上下文节点 | doc/git | 表示一个确定的上下文状态，即"世界状态、对话历史和已发生事件"是稳定且被用户确认的 |
+| 上下文节点 | doc/合并.md | 表示一个确定的上下文状态，即"世界状态、对话历史和已发生事件"是稳定且被用户确认的 |
 | 消息节点 | doc/类git设计对话消息.md | 系统的最小原子单位，存储消息内容、角色和元数据 |
-| 生成记录 | doc/git | 在完全相同的上下文条件下，一次具体的模型生成结果 |
+| 生成记录 | doc/合并.md | 在完全相同的上下文条件下，一次具体的模型生成结果 |
 | 会话指针 | doc/类git设计对话消息.md | 类似Git中的HEAD，指向用户当前看到的最后一条消息 |
 | 线性投影 | doc/类git设计对话消息.md | 连接"树状存储"与"线性LLM"的桥梁 |
 
@@ -218,7 +218,7 @@ class AppDatabase extends _$AppDatabase {
 领域层Provider (Domain Layer)
 ├── historyServiceProvider
 ├── projectionServiceProvider
-└── orchestratorProvider
+└── jacquardProvider
 
 表现层Provider (Presentation Layer)
 ├── sessionStateProvider
@@ -486,18 +486,18 @@ class HistoryService {
 }
 ```
 
-### 5.3 编排器（Orchestrator）
+### 5.3 Jacquard（编排器）
 
-编排器协调各个组件，实现完整的对话流程：
+Jacquard 协调各个组件，实现完整的对话流程：
 
 ```dart
-class Orchestrator {
+class Jacquard {
   final HistoryService _historyService;
   final ProjectionService _projectionService;
   final VectorStore _vectorStore;
   final LLMClient _llmClient;
   
-  Orchestrator(
+  Jacquard(
     this._historyService,
     this._projectionService,
     this._vectorStore,

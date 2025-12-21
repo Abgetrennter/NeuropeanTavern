@@ -42,7 +42,7 @@
 采用分层架构以确保关注点分离，便于测试和维护。
 
 *   **Presentation Layer (UI)**: Flutter Widgets, Riverpod Providers (ViewModels). 负责渲染和用户交互。
-*   **Domain Layer (Business Logic)**: Entities, UseCases, Repository Interfaces. 纯 Dart 代码，不依赖 Flutter UI 库。Orchestrator 核心逻辑位于此层。
+*   **Domain Layer (Business Logic)**: Entities, UseCases, Repository Interfaces. 纯 Dart 代码，不依赖 Flutter UI 库。Jacquard 核心逻辑位于此层。
 *   **Data Layer (Infrastructure)**: Repository Implementations, Data Sources (API, DB). 负责具体的数据读写和网络请求。
 
 ### 2.2 状态管理: Riverpod (v2)

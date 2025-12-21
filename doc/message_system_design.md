@@ -1,10 +1,10 @@
-# 🌲 多重宇宙对话系统与状态快照设计 (Multiverse Dialogue & State Snapshot System)
+# 🌲 Clotho 多重宇宙对话系统与状态快照设计 (Multiverse Dialogue & State Snapshot System)
 
 ## 1. 核心设计理念：对话即存档 (Dialogue as Save State)
 
-本设计旨在融合 **“类 Git 树状对话历史”** 与 **“Agent 状态管理”**。
+本设计旨在融合 **"类 Git 树状对话历史"** 与 **"Agent 状态管理"**。
 
-核心思想是：**对话节点（Node）不仅仅承载文本，它是当时整个世界状态的“冻结快照”。**
+核心思想是：**对话节点（Node）不仅仅承载文本，它是当时整个世界状态的"冻结快照"。**
 
 ### 1.1 解决的问题
 在传统设计中，RPG 状态（如 HP、好感度）通常存储在全局变量中。
@@ -139,13 +139,13 @@ class PromptTrace {
 
 ## 5. 对接现有架构 (Integration)
 
-### 5.1 修改 Orchestrator
-*   **移除** `MockOrchestrator` 中的 `List<ChatMessage> _chatHistory`。
+### 5.1 修改 Jacquard
+*   **移除** `MockJacquard` 中的 `List<ChatMessage> _chatHistory`。
 *   **引入** `TreeManager` 类，负责维护树结构和 HEAD 指针。
 *   `processUserMessage` 不再只是 append list，而是执行上述的 **Commit** 流程。
 
-### 5.2 修改 DataManager
-*   DataManager 不再只维护一份全局单例的 State。
+### 5.2 修改 Mnemosyne
+*   Mnemosyne 不再只维护一份全局单例的 State。
 *   它需要提供 `restoreState(WorldStateSnapshot snapshot)` 方法，用于在切换节点时瞬间重置内存中的所有变量。
 
 ---
