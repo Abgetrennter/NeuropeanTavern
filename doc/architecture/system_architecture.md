@@ -1,21 +1,23 @@
 # Clotho 系统架构设计文档 (System Architecture Design Document)
 
-**版本**: 3.0
+**版本**: 4.0
 **状态**: Draft
-**最后更新**: 2025-12-19
-**参考文档**: `doc/合并.md`, `doc/plan.md`, `doc/升级版设计.md`
+**最后更新**: 2025-12-23
+**参考文档**: `doc/合并.md`, `doc/plan.md`, `doc/升级版设计.md`, `doc/architecture/st_prompt_template_migration_design.md`
 
 ---
 
 ## 1. 架构概览 (Architecture Overview)
 本项目旨在构建一个高性能、高可定制的 AI 角色扮演（RPG）客户端。现有解决方案（如 SillyTavern）在处理复杂逻辑时面临性能瓶颈（前端重逻辑）和上下文管理混乱（字符串拼接难以维护）的问题。
+
 ### 核心目标
 1.  **架构解耦**：实现 UI（Flutter）与逻辑（Dart Jacquard）的彻底分离。
-2.  **确定性编排**：通过代码控制流程，通过 LLM 处理语义，拒绝“让 LLM 决定一切”。
-3.  **时空一致性**：引入“多重宇宙树（Turn-based Tree）”模型管理对话历史，支持无损的回溯、分支（Reroll）和状态快照。
-4.  **结构化 Prompt**：采用 PromptAST（抽象语法树）替代传统的字符串拼接，实现模块化的上下文装配。
+2.  **确定性编排**：通过代码控制流程，通过 LLM 处理语义，拒绝"让 LLM 决定一切"。
+3.  **时空一致性**：引入"多重宇宙树（Turn-based Tree）"模型管理对话历史，支持无损的回溯、分支（Reroll）和状态快照。
+4.  **结构化 Prompt**：采用 **Skein**（结构化数据容器）替代传统的字符串拼接，实现模块化的上下文装配。
+5.  **可扩展性**：支持用户通过 JavaScript/Lua 等脚本语言编写自定义插件，运行在安全的沙箱环境中。
 
-本系统采用 **混合 Agent 架构 (Hybrid Agent Architecture)**，核心设计理念是 **“数据与逻辑分离，确定性编排与概率性生成结合”**。
+本系统采用 **混合 Agent 架构 (Hybrid Agent Architecture)**，核心设计理念是 **"数据与逻辑分离，确定性编排与概率性生成结合"**。
 
 ### 1.1 系统边界与分层
 
@@ -41,6 +43,7 @@ graph TD
     classDef orch fill:#fff3e0,stroke:#e65100,stroke-width:2px;
     classDef data fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
     classDef ext fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+    classDef script fill:#fce4ec,stroke:#880e4f,stroke-width:2px;
 
     User((用户))
 
@@ -49,14 +52,25 @@ graph TD
         UI_Webview[Webview 组件]:::ui
     end
 
-    subgraph Jacquard [编排层PluginRunner]
-        Jacquard[Jacquard总线]:::orch
+    subgraph Jacquard [编排层 Jacquard Pipeline]
+        Jacquard[Jacquard 总线]:::orch
         
-        subgraph Shuttles [插件流水线]
+        subgraph NativePlugins [原生插件流水线]
             P_Planner[Planner Plugin]:::orch
-            P_Assembler[Prompt Assembler]:::orch
+            P_Builder[Skein Builder]:::orch
+            P_AST[Prompt AST Executor]:::orch
             P_Cleaner[Regex Cleaner]:::orch
+            P_Budget[Token Budget Plugin]:::orch
+            P_Assembler[Prompt Assembler]:::orch
+            P_Invoker[LLM Invoker]:::orch
             P_Parser[Filament Parser]:::orch
+            P_Updater[State Updater]:::orch
+        end
+        
+        subgraph ScriptPlugins [脚本插件沙箱]
+            SR[Script Plugin Runner]:::script
+            SR_JS[QuickJS 引擎]:::script
+            SR_Lua[LuaJIT 引擎]:::script
         end
     end
 
@@ -80,10 +94,15 @@ graph TD
     UI_Chat <--> Jacquard
     
     Jacquard --> Mnemosyne
-    Jacquard --> Shuttles
+    Jacquard --> NativePlugins
+    Jacquard --> SR
     
-    P_Assembler -- "请求快照" --> Mnemosyne
-    Mnemosyne -- "返回 Punchcards" --> P_Assembler
+    P_Builder -- "请求快照" --> Mnemosyne
+    Mnemosyne -- "返回 Punchcards" --> P_Builder
+    
+    P_AST --> SR
+    SR --> SR_JS
+    SR --> SR_Lua
     
     P_Assembler --> LLM
     LLM --> P_Parser
@@ -113,24 +132,23 @@ graph TD
 LLM 的输出必须遵循以下结构：
 
 ```xml
-<root>
-    <!-- 思维链 (可选) -->
-    <thought>
-        分析用户意图...
-        决定执行攻击动作...
-    </thought>
+<!-- 思维链 (可选) -->
+<thought>
+    分析用户意图...
+    决定执行攻击动作...
+</thought>
 
-    <!-- 状态变更 (可选) -->
-    <state_update>
-        <set key="hp" value="90"></set>
-        <add key="gold" value="10"></add>
-    </state_update>
+<!-- 状态变更 (可选) -->
+<state_update>
+    <set key="hp" value="90"></set>
+    <add key="gold" value="10"></add>
+</state_update>
 
-    <!-- 最终回复 (必须) -->
-    <reply>
-        你挥舞长剑，击中了哥布林！
-    </reply>
-</root>
+<!-- 最终回复 (必须) -->
+<reply>
+    你挥舞长剑，击中了哥布林！
+</reply>
+
 ```
 
 ---
@@ -194,24 +212,45 @@ Jacquard 维护一个插件列表，每个插件实现特定的接口：
 abstract class JacquardPlugin {
   Future<void> execute(JacquardContext context);
 }
+
+/// Jacquard 上下文，在插件间传递
+class JacquardContext {
+  Skein skein;              // 当前 Skein 对象
+  Map<String, dynamic> state; // 当前状态
+  String sessionId;         // 会话 ID
+  SessionPointer pointer;   // 当前会话指针
+  // ... 其他上下文信息
+}
 ```
 
-### 4.2 核心插件示例
+### 4.2 Skein: 绞纱 - 结构化 Prompt 容器
+
+**Skein** 是 Jacquard 流水线处理的核心数据对象。它是一个 **异构容器 (Heterogeneous Container)**，不强制内部元素的类型一致性，只关心它们的"编织策略"（如何被组装成最终 Prompt）。
+
+
+#### 4.3 核心插件
 
 1.  **Planner Plugin**:
     *   分析用户输入，决定是否需要调用工具或修改上下文检索策略。
-2.  **Prompt Assembler Plugin**:
-    *   **核心插件**。
-    *   向 `Mnemosyne` 请求 `Punchcards`。
-    *   将快照中的数据（History, Lore, State）按照 Filament 模板组装成最终的 Prompt 字符串。
-3.  **LLM Invoker Plugin**:
+2.  **LLM Invoker Plugin**:
     *   调用 LLM API，获取流式响应。
-4.  **Filament Parser Plugin**:
+3.  **Filament Parser Plugin**:
     *   实时解析 LLM 的 Filament 输出。
     *   提取 `<reply>` 推送给 UI。
     *   提取 `<state_update>` 准备后续处理。
-5.  **State Updater Plugin**:
+4.  **State Updater Plugin**:
     *   将解析出的状态变更提交回 `Mnemosyne`。
+
+### 4.4 Script Plugin Runner (脚本插件运行器)
+
+为了支持用户自定义扩展，Jacquard 提供了沙箱化的脚本插件运行器，允许用户使用 JavaScript 或 Lua 编写自定义插件。
+
+#### 4.4.1 设计理念
+
+- **隔离性**：脚本运行在受限的沙箱环境中，无法访问宿主机的文件系统、网络等敏感资源。
+- **API 限制**：只暴露必要的 API（如 `skein` 操作、状态读取），禁止直接访问内部对象。
+- **语言支持**：优先支持 JavaScript (QuickJS 引擎) 和 Lua (LuaJIT 引擎)。
+
 
 ---
 
@@ -223,11 +262,19 @@ abstract class JacquardPlugin {
 
 1.  **用户输入**: 用户发送消息。
 2.  **Jacquard 启动**: 初始化流水线上下文。
-3.  **Prompt Assembler**:
+3.  **Skein Builder Plugin**:
     *   调用 `Mnemosyne.getPunchcards()`。
     *   Mnemosyne 内部 Pipeline 运行：检索 Lore -> 获取历史 -> 读取状态。
     *   返回 `Punchcards`。
-    *   Assembler 将 Snapshot 渲染为 Filament Prompt。
+    *   Builder 构建 `Skein` 对象。
+4.  **中间件插件处理**:
+    *   **Prompt AST Executor**: 执行条件逻辑。
+    *   **Regex Cleaner**: 清理敏感词。
+    *   **Script Plugin Runner**: 执行用户自定义脚本。
+    *   **Token Budget**: 根据 Token 预算裁剪 Skein。
+5.  **Prompt Assembler**:
+    *   调用 `Weaver.process(skein)`。
+    *   将 Skein 渲染为最终的 Filament Prompt 字符串。
 
 ### 5.2 阶段二：生成与解析
 
@@ -248,37 +295,3 @@ abstract class JacquardPlugin {
     *   更新指针，准备下一轮对话。
 
 ---
-
-## 6. 请求/响应序列图 (Sequence Diagram)
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant O as Jacquard (Runner)
-    participant PA as Prompt Assembler
-    participant WE as Mnemosyne
-    participant L as LLM
-    participant SP as Filament Parser
-
-    U->>O: 发送消息
-    
-    Note over O, WE: 插件 1: 组装 Prompt
-    O->>PA: execute()
-    PA->>WE: getPunchcards()
-    WE->>WE: Run Internal Pipeline
-    WE-->>PA: Punchcards
-    PA->>PA: Render Filament Prompt
-    
-    Note over O, L: 插件 2: 调用 LLM
-    O->>L: streamGenerate(Prompt)
-    
-    Note over O, SP: 插件 3: 解析流
-    loop Streaming
-        L-->>SP: Filament Chunk
-        SP-->>O: Parsed Events
-        O-->>U: Update UI
-    end
-    
-    Note over O, WE: 插件 4: 更新状态
-    O->>WE: updateState(delta)
-    O->>WE: saveHistory(node)
