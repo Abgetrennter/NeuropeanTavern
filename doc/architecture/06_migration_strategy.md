@@ -2,7 +2,7 @@
 
 **版本**: 1.0.0
 **日期**: 2025-12-23
-**状态**: 正式归档
+**状态**: Draft
 **作者**: 资深系统架构师 (Architect Mode)
 **源文档**: `st_prompt_template_analysis.md`, `st_prompt_template_migration_design.md`, `st_prompt_template_integration_plan.md`
 
