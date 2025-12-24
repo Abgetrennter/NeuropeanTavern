@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/presentation/widgets/adaptive_scaffold.dart';
 import '../../../../core/presentation/widgets/atomic/atom_button.dart';
 import '../../../../core/presentation/widgets/atomic/atom_input.dart';
 import '../../../../core/presentation/widgets/atomic/atom_avatar.dart';
+import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/theme/theme_state.dart';
+import '../widgets/decision_card/decision_card_widget.dart';
 
-class UnifiedChatUIDemo extends StatefulWidget {
+class UnifiedChatUIDemo extends ConsumerStatefulWidget {
   const UnifiedChatUIDemo({super.key});
 
   @override
-  State<UnifiedChatUIDemo> createState() => _UnifiedChatUIDemoState();
+  ConsumerState<UnifiedChatUIDemo> createState() => _UnifiedChatUIDemoState();
 }
 
-class _UnifiedChatUIDemoState extends State<UnifiedChatUIDemo> {
+class _UnifiedChatUIDemoState extends ConsumerState<UnifiedChatUIDemo> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isGenerating = false;
@@ -101,6 +106,49 @@ class _UnifiedChatUIDemoState extends State<UnifiedChatUIDemo> {
                 color: Colors.greenAccent,
               ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDecisionCard(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent, // 透明背景以显示卡片的异形效果
+      isScrollControlled: true, // 允许自适应高度
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: DecisionCard(
+                title: '剧情抉择',
+                subtitle: 'Chapter 3 · The Crossroads',
+                options: const [
+                  '立刻出发前往魔法森林深处寻找线索',
+                  '先回到城镇休整，打听更多关于“暗影”的情报',
+                  '在这个废弃的营地过夜，观察周围的动静',
+                ],
+                tipsText: '不同的选择将导向完全不同的剧情分支。请慎重考虑当前的队伍状态（Energy: 45%）和剩余的补给品。',
+                confirmButtonText: '确定选择',
+                onOptionTap: (index, isSelected) {
+                  // 这里可以添加选中时的逻辑
+                },
+                onConfirm: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('已做出选择，剧情继续...'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         );
       },
@@ -212,18 +260,12 @@ class _UnifiedChatUIDemoState extends State<UnifiedChatUIDemo> {
 
   @override
   Widget build(BuildContext context) {
-    // 使用亮色主题和清柔的 ColorScheme
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFFB0C4DE), // LightSteelBlue，清柔的蓝灰色
-      brightness: Brightness.light,
-    );
+    final themeState = ref.watch(themeProvider);
+    // 使用当前主题的 ColorScheme
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Theme(
-      data: ThemeData(
-        useMaterial3: true,
-        colorScheme: colorScheme,
-        scaffoldBackgroundColor: colorScheme.surface, // 使用 surface 作为背景
-      ),
+      data: Theme.of(context), // 直接使用上下文中的主题，它应该已经是通过 ThemeProvider 配置的
       child: DefaultTabController(
         length: 3,
         child: AdaptiveScaffold(
@@ -352,26 +394,174 @@ class _UnifiedChatUIDemoState extends State<UnifiedChatUIDemo> {
                 ),
               ),
               
-              // Settings Tab (Placeholder)
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.settings, size: 64, color: colorScheme.primary.withValues(alpha: 0.5)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Settings',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // Settings Tab
+              _buildSettingsTab(colorScheme, themeState),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTab(ColorScheme colorScheme, ThemeState themeState) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _buildSectionHeader('Theme Mode', colorScheme),
+        const SizedBox(height: 16),
+        SegmentedButton<ThemeMode>(
+          segments: const [
+            ButtonSegment(
+              value: ThemeMode.system,
+              label: Text('System'),
+              icon: Icon(Icons.brightness_auto),
+            ),
+            ButtonSegment(
+              value: ThemeMode.light,
+              label: Text('Light'),
+              icon: Icon(Icons.brightness_5),
+            ),
+            ButtonSegment(
+              value: ThemeMode.dark,
+              label: Text('Dark'),
+              icon: Icon(Icons.brightness_2),
+            ),
+          ],
+          selected: {themeState.themeMode},
+          onSelectionChanged: (Set<ThemeMode> newSelection) {
+            ref.read(themeProvider.notifier).updateThemeMode(newSelection.first);
+          },
+        ),
+
+        const SizedBox(height: 32),
+        _buildSectionHeader('Seed Color', colorScheme),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _buildColorOption(DesignTokens.primaryColor, themeState.seedColor),
+            _buildColorOption(Colors.blue, themeState.seedColor),
+            _buildColorOption(Colors.green, themeState.seedColor),
+            _buildColorOption(Colors.purple, themeState.seedColor),
+            _buildColorOption(Colors.red, themeState.seedColor),
+            _buildColorOption(Colors.teal, themeState.seedColor),
+            _buildColorOption(Colors.pink, themeState.seedColor),
+            _buildColorOption(Colors.indigo, themeState.seedColor),
+          ],
+        ),
+        if (themeState.seedColor != DesignTokens.primaryColor)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  ref.read(themeProvider.notifier).resetSeedColor();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reset to Default'),
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 32),
+        _buildSectionHeader('Font Family', colorScheme),
+        Column(
+          children: [
+            RadioListTile<String?>(
+              title: const Text('Default (Noto Sans)'),
+              value: null,
+              groupValue: themeState.fontFamily,
+              onChanged: (value) {
+                ref.read(themeProvider.notifier).updateFontFamily(null);
+              },
+            ),
+            RadioListTile<String?>(
+              title: const Text('Monospace'),
+              value: 'Noto Sans Mono',
+              groupValue: themeState.fontFamily,
+              onChanged: (value) {
+                ref.read(themeProvider.notifier).updateFontFamily(value);
+              },
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 32),
+        _buildSectionHeader('Corner Radius', colorScheme),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.rounded_corner, size: 20),
+            Expanded(
+              child: Slider(
+                value: themeState.customBorderRadius,
+                min: 0.0,
+                max: 2.0,
+                divisions: 20,
+                label: themeState.customBorderRadius.toStringAsFixed(1),
+                onChanged: (value) {
+                  ref.read(themeProvider.notifier).updateCustomBorderRadius(value);
+                },
+              ),
+            ),
+            Text(
+              '${themeState.customBorderRadius.toStringAsFixed(1)}x',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, ColorScheme colorScheme) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: colorScheme.primary,
+      ),
+    );
+  }
+
+  Widget _buildColorOption(Color color, Color selectedColor) {
+    final isSelected = color.value == selectedColor.value;
+    return GestureDetector(
+      onTap: () {
+        ref.read(themeProvider.notifier).updateSeedColor(color);
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
+            width: 3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: isSelected
+            ? Icon(
+                Icons.check,
+                color: ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+              )
+            : null,
       ),
     );
   }
@@ -491,6 +681,12 @@ class _UnifiedChatUIDemoState extends State<UnifiedChatUIDemo> {
                 color: colorScheme.primary,
                 onPressed: () => _showStatusPanel(context, colorScheme),
                 tooltip: 'Show Status',
+              ),
+              IconButton(
+                icon: const Icon(Icons.extension),
+                color: colorScheme.primary,
+                onPressed: () => _showDecisionCard(context),
+                tooltip: 'Show Decision Card',
               ),
               const Spacer(),
             ],

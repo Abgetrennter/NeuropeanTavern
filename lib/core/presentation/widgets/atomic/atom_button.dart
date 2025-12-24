@@ -27,6 +27,9 @@ class AtomButton extends StatefulWidget {
   final AtomButtonSize size;
   final bool isLoading;
   final String? tooltip;
+  final Color? backgroundColor;
+  final Color? textColor;
+  final Color? borderColor;
 
   const AtomButton({
     super.key,
@@ -37,6 +40,9 @@ class AtomButton extends StatefulWidget {
     this.size = AtomButtonSize.medium,
     this.isLoading = false,
     this.tooltip,
+    this.backgroundColor,
+    this.textColor,
+    this.borderColor,
   });
 
   @override
@@ -160,6 +166,13 @@ class _AtomButtonState extends State<AtomButton> with SingleTickerProviderStateM
   }
 
   Color _getBackgroundColor(bool isDisabled) {
+    if (widget.backgroundColor != null) {
+      if (isDisabled) {
+        return widget.backgroundColor!.withValues(alpha: 0.5);
+      }
+      return _isHovered ? widget.backgroundColor!.withValues(alpha: 0.9) : widget.backgroundColor!;
+    }
+    
     if (isDisabled) return DesignTokens.grey30a;
     
     switch (widget.variant) {
@@ -176,6 +189,10 @@ class _AtomButtonState extends State<AtomButton> with SingleTickerProviderStateM
   }
 
   Color _getTextColor(bool isDisabled) {
+    if (widget.textColor != null) {
+      return isDisabled ? widget.textColor!.withValues(alpha: 0.5) : widget.textColor!;
+    }
+    
     if (isDisabled) return DesignTokens.grey50;
     
     switch (widget.variant) {
@@ -188,6 +205,12 @@ class _AtomButtonState extends State<AtomButton> with SingleTickerProviderStateM
   }
 
   Border? _getBorder(bool isDisabled) {
+    if (widget.borderColor != null) {
+       return Border.all(
+        color: _isHovered ? widget.borderColor!.withValues(alpha: 0.8) : widget.borderColor!,
+      );
+    }
+    
     if (widget.variant == AtomButtonVariant.secondary && !isDisabled) {
       return Border.all(
         color: _isHovered ? DesignTokens.primaryColor : DesignTokens.borderColor,

@@ -27,6 +27,8 @@ class AtomAvatar extends StatelessWidget {
   final AtomAvatarSize size;
   final OnlineStatus? status;
   final VoidCallback? onTap;
+  final Color? backgroundColor;
+  final Color? textColor;
 
   const AtomAvatar({
     super.key,
@@ -35,6 +37,8 @@ class AtomAvatar extends StatelessWidget {
     this.size = AtomAvatarSize.medium,
     this.status,
     this.onTap,
+    this.backgroundColor,
+    this.textColor,
   });
 
   @override
@@ -70,7 +74,7 @@ class AtomAvatar extends StatelessWidget {
       width: size.size,
       height: size.size,
       decoration: BoxDecoration(
-        color: DesignTokens.grey50, // 占位背景色
+        color: backgroundColor ?? DesignTokens.grey50, // 占位背景色或自定义
         shape: BoxShape.circle,
         border: Border.all(
           color: DesignTokens.borderColor,
@@ -89,7 +93,7 @@ class AtomAvatar extends StatelessWidget {
               child: Text(
                 fallbackText?.isNotEmpty == true ? fallbackText![0].toUpperCase() : '?',
                 style: TextStyle(
-                  color: DesignTokens.bodyColor,
+                  color: textColor ?? DesignTokens.bodyColor,
                   fontSize: size.size * 0.5,
                   fontWeight: FontWeight.bold,
                 ),

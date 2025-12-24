@@ -17,6 +17,11 @@ class AtomInput extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final FocusNode? focusNode;
   final bool autoFocus;
+  final Color? backgroundColor;
+  final Color? textColor;
+  final Color? borderColor;
+  final Color? hintColor;
+  final Color? cursorColor;
 
   const AtomInput({
     super.key,
@@ -31,6 +36,11 @@ class AtomInput extends StatefulWidget {
     this.onSubmitted,
     this.focusNode,
     this.autoFocus = false,
+    this.backgroundColor,
+    this.textColor,
+    this.borderColor,
+    this.hintColor,
+    this.cursorColor,
   });
 
   @override
@@ -67,16 +77,16 @@ class _AtomInputState extends State<AtomInput> {
     return AnimatedContainer(
       duration: DesignTokens.animationDuration,
       decoration: BoxDecoration(
-        color: _isFocused ? DesignTokens.black40a : DesignTokens.black30a,
+        color: widget.backgroundColor ?? (_isFocused ? DesignTokens.black40a : DesignTokens.black30a),
         borderRadius: BorderRadius.circular(DesignTokens.borderRadiusXl),
         border: Border.all(
-          color: _isFocused ? DesignTokens.primaryColor : DesignTokens.borderColor,
+          color: widget.borderColor ?? (_isFocused ? DesignTokens.primaryColor : DesignTokens.borderColor),
           width: _isFocused ? 2 : 1,
         ),
         boxShadow: _isFocused
             ? [
                 BoxShadow(
-                  color: DesignTokens.primaryColor.withValues(alpha: 0.2),
+                  color: (widget.borderColor ?? DesignTokens.primaryColor).withValues(alpha: 0.2),
                   blurRadius: 8,
                   spreadRadius: 1,
                 )
@@ -93,21 +103,21 @@ class _AtomInputState extends State<AtomInput> {
         onChanged: widget.onChanged,
         onSubmitted: widget.onSubmitted,
         style: TextStyle(
-          color: DesignTokens.bodyColor,
+          color: widget.textColor ?? DesignTokens.bodyColor,
           fontSize: DesignTokens.fontSizeBase,
           fontFamily: DesignTokens.fontFamily,
         ),
-        cursorColor: DesignTokens.primaryColor,
+        cursorColor: widget.cursorColor ?? DesignTokens.primaryColor,
         decoration: InputDecoration(
           hintText: widget.hintText,
           hintStyle: TextStyle(
-            color: DesignTokens.emphasisColor,
+            color: widget.hintColor ?? DesignTokens.emphasisColor,
             fontSize: DesignTokens.fontSizeBase,
           ),
           prefixIcon: widget.prefixIcon != null
               ? IconTheme(
                   data: IconThemeData(
-                    color: _isFocused ? DesignTokens.primaryColor : DesignTokens.grey50,
+                    color: _isFocused ? (widget.borderColor ?? DesignTokens.primaryColor) : DesignTokens.grey50,
                   ),
                   child: widget.prefixIcon!,
                 )
@@ -115,7 +125,7 @@ class _AtomInputState extends State<AtomInput> {
           suffixIcon: widget.suffixIcon != null
               ? IconTheme(
                   data: IconThemeData(
-                    color: _isFocused ? DesignTokens.primaryColor : DesignTokens.grey50,
+                    color: _isFocused ? (widget.borderColor ?? DesignTokens.primaryColor) : DesignTokens.grey50,
                   ),
                   child: widget.suffixIcon!,
                 )

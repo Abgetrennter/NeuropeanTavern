@@ -39,6 +39,13 @@ class DebugMenuPage extends ConsumerWidget {
           const SizedBox(height: 16),
           _buildMenuButton(
             context,
+            'Unified Chat UI Demo',
+            '/unified_demo',
+            Icons.merge_type,
+          ),
+          const SizedBox(height: 16),
+          _buildMenuButton(
+            context,
             'Test Panel',
             '/test',
             Icons.science,
