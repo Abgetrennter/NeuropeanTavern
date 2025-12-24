@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/presentation/widgets/adaptive_scaffold.dart';
+import '../../../../core/theme/design_tokens.dart';
 import '../../domain/entities/chat_message.dart';
 import '../providers/chat_provider.dart';
+import '../widgets/input_control_deck.dart';
+import '../widgets/message/message_bubble.dart';
+import '../widgets/message/swipeable_message.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key});
@@ -12,11 +17,40 @@ class ChatPage extends ConsumerStatefulWidget {
 
 class _ChatPageState extends ConsumerState<ChatPage> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSendMessage(Future<void> Function(String) sendMessage) async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    _controller.clear();
+    
+    try {
+      await sendMessage(text);
+      // 滚动到底部
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -24,96 +58,69 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final messages = ref.watch(chatMessagesProvider);
     final sendMessage = ref.watch(sendMessageProvider);
 
-    return Scaffold(
+    return AdaptiveScaffold(
+      backgroundColor: DesignTokens.pageBackgroundColor,
       appBar: AppBar(
         title: const Text('NEuropean Chat'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            onPressed: () {},
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(
+                horizontal: DesignTokens.spacingMd,
+                vertical: DesignTokens.spacingMd,
+              ),
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 final message = messages[index];
-                return _buildMessageBubble(message);
+                return _buildMessageItem(message);
               },
             ),
           ),
-          _buildInputBar(sendMessage),
+          InputControlDeck(
+            textController: _controller,
+            onSendMessage: () => _handleSendMessage(sendMessage),
+            onShowStatus: () {}, // TODO: Implement status panel
+            isLoading: _isLoading,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
+  Widget _buildMessageItem(ChatMessage message) {
     final isUser = message.role == 'user';
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            CircleAvatar(
-              backgroundColor: Colors.blue.shade100,
-              child: const Icon(Icons.person, color: Colors.blue),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color: isUser ? Colors.blue.shade100 : Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              child: Text(
-                message.content,
-                style: TextStyle(
-                  color: isUser ? Colors.blue.shade900 : Colors.black87,
-                ),
-              ),
-            ),
-          ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: Colors.green.shade100,
-              child: const Icon(Icons.account_circle, color: Colors.green),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInputBar(Future<void> Function(String) sendMessage) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                hintText: '输入消息...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: null,
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () async {
-              if (_controller.text.trim().isNotEmpty) {
-                final text = _controller.text.trim();
-                _controller.clear();
-                await sendMessage(text);
-              }
-            },
-          ),
-        ],
+    
+    return SwipeableMessage(
+      enabled: true,
+      onSwipeLeft: (_) {
+        // TODO: Handle edit action
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Edit message')),
+        );
+      },
+      onSwipeRight: (_) {
+        // TODO: Handle reply action
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reply to message')),
+        );
+      },
+      child: MessageBubble(
+        content: message.content,
+        isUser: isUser,
+        senderName: isUser ? 'User' : 'Assistant',
+        status: MessageStatus.sent, // TODO: Bind real status
       ),
     );
   }

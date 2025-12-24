@@ -1,94 +1,94 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/presentation/widgets/atomic/atom_button.dart';
+import '../../../../core/presentation/widgets/atomic/atom_input.dart';
+import '../../../../core/presentation/widgets/effects/frosted_glass.dart';
 
 class InputControlDeck extends StatelessWidget {
   final TextEditingController textController;
   final VoidCallback onSendMessage;
   final VoidCallback onShowStatus;
-  final ColorScheme colorScheme;
+  final bool isLoading;
 
   const InputControlDeck({
     super.key,
     required this.textController,
     required this.onSendMessage,
     required this.onShowStatus,
-    required this.colorScheme,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, -2),
-            blurRadius: 4,
-          ),
-        ],
+    return FrostedGlass(
+      blur: DesignTokens.blurHeavy,
+      color: DesignTokens.black30a,
+      border: const Border(
+        top: BorderSide(color: DesignTokens.borderColor),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      child: Column(
-        children: [
-          // 状态按钮行
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                color: colorScheme.onSurfaceVariant,
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.image_outlined),
-                color: colorScheme.onSurfaceVariant,
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.favorite_border),
-                color: colorScheme.primary,
-                onPressed: onShowStatus,
-                tooltip: 'Show Status',
-              ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // 输入行
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: textController,
-                  decoration: InputDecoration(
-                    hintText: 'Type a message...',
-                    hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
-                  style: TextStyle(color: colorScheme.onSurface),
-                  minLines: 1,
-                  maxLines: 5,
+      child: Padding(
+        padding: const EdgeInsets.all(DesignTokens.spacingMd),
+        child: Column(
+          children: [
+            // 状态按钮行
+            Row(
+              children: [
+                AtomButton(
+                  variant: AtomButtonVariant.icon,
+                  icon: Icons.add_circle_outline,
+                  onPressed: () {},
+                  tooltip: 'Add attachment',
                 ),
-              ),
-              const SizedBox(width: 12),
-              FloatingActionButton(
-                onPressed: onSendMessage,
-                backgroundColor: colorScheme.primaryContainer,
-                foregroundColor: colorScheme.onPrimaryContainer,
-                elevation: 0,
-                child: const Icon(Icons.send),
-              ),
-            ],
-          ),
-        ],
+                AtomButton(
+                  variant: AtomButtonVariant.icon,
+                  icon: Icons.image_outlined,
+                  onPressed: () {},
+                  tooltip: 'Add image',
+                ),
+                AtomButton(
+                  variant: AtomButtonVariant.icon,
+                  icon: Icons.favorite_border,
+                  onPressed: onShowStatus,
+                  tooltip: 'Show Status',
+                ),
+                const Spacer(),
+                AtomButton(
+                  variant: AtomButtonVariant.icon,
+                  icon: Icons.more_horiz,
+                  onPressed: () {},
+                  tooltip: 'More options',
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: DesignTokens.spacingSm),
+            
+            // 输入行
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: AtomInput(
+                    controller: textController,
+                    hintText: 'Send a message...',
+                    maxLines: 5,
+                    minLines: 1,
+                    onSubmitted: (_) => onSendMessage(),
+                  ),
+                ),
+                const SizedBox(width: DesignTokens.spacingSm),
+                AtomButton(
+                  variant: AtomButtonVariant.primary,
+                  size: AtomButtonSize.large,
+                  icon: Icons.send,
+                  onPressed: onSendMessage,
+                  isLoading: isLoading,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

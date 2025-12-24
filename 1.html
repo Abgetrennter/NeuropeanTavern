@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+@keyframes fade-out-nova { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.96); } }
+.nova-container.fading-out { animation: fade-out-nova 0.26s ease-out forwards; }
+
+:root{
+  --bg-deep: linear-gradient(180deg, #090e16 0%, #0a1220 100%);
+  --bg-elev: linear-gradient(180deg, rgba(16,28,48,0.28), rgba(9,16,30,0.35));
+  --line-weak: #162339;
+  --line-strong: #223650;
+  --text-main: #d9e5ff;
+  --text-dim: #8fa0bf;
+  --btn-bg: #0e1a2d;
+  --btn-hover: #15263f;
+  --btn-active: #132745;
+  --btn-active-glow: rgba(42,168,255,0.14);
+  --btn-border-active: #254569;
+  --btn-border: #223650;
+  --accent: #2aa8ff;
+  --accent-soft: rgba(42,168,255,0.35);
+  --accent-faint: rgba(42,168,255,0.12);
+  --notch: 10px;
+}
+
+/* 容器 */
+.nova-silent-sky{
+  display:flex; justify-content:center; width:100%;
+  padding: 0 12px; margin: 12px auto;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 卡片 */
+.mystic-card-silent{
+  width: min(980px, 96vw);
+  background: var(--bg-deep);
+  color: var(--text-main);
+  border: 1px solid var(--line-weak);
+  box-shadow: 0 14px 38px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.03);
+  position: relative; overflow: hidden;
+  clip-path: polygon(
+    0 var(--notch), var(--notch) 0,
+    calc(100% - var(--notch)) 0, 100% var(--notch),
+    100% calc(100% - var(--notch)), calc(100% - var(--notch)) 100%,
+    var(--notch) 100%, 0 calc(100% - var(--notch))
+  );
+}
+.mystic-card-silent::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  box-shadow: inset 0 0 0 1px rgba(42,168,255,0.06);
+  clip-path: inherit;
+}
+/* 顶部柔光 + 轻微呼吸动效（常驻） */
+.mystic-card-silent::after{
+  content:""; position:absolute; inset:-1px -1px 60% -1px;
+  background: radial-gradient(80% 50% at 25% 0%, rgba(255,255,255,0.04), rgba(255,255,255,0));
+  pointer-events:none;
+  animation: cardGlow 12s ease-in-out infinite;
+}
+@keyframes cardGlow{
+  0%,100%{ opacity: .25; }
+  50%{ opacity: .38; }
+}
+
+.mystic-card-silent summary {
+  list-style: none; cursor: pointer; outline: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.mystic-card-silent summary::-webkit-details-marker { display: none; }
+
+.card-content-wrapper {
+  padding: 0 14px 16px; /* 减少底部留白，确认按钮已并入 Tips */
+  position: relative;
+}
+
+.toggle-text {
+  font-size: 11px; color: var(--text-dim); opacity: 0.7;
+  transition: color .2s ease, opacity .2s ease; margin-left: auto; padding-left: 16px;
+}
+.mystic-card-silent[open] > summary .toggle-text { color: var(--accent); opacity: 1; }
+.mystic-card-silent > summary:hover .toggle-text { color: var(--text-main); opacity: 0.9; }
+
+.card-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 14px;
+}
+.card-header-main { display: flex; flex-direction: column; }
+.card-title{ font-size: 13px; font-weight: 600; letter-spacing: 0.3px; }
+.card-subtle{ font-size: 11px; color: var(--text-dim); opacity: 0.85; margin-top: 2px; }
+
+.button-group-silent{
+  display:grid; grid-template-columns: 1fr; gap: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255,255,255,0.06);
+}
+@media (min-width: 880px){
+  .button-group-silent{ grid-template-columns: 1fr 1fr; }
+}
+
+/* 选项按钮 */
+.action-btn-silent{
+  position: relative;
+  text-align:left; width:100%;
+  padding: 12px 34px 12px 14px; /* 右侧留空间给方块标记 */
+  font-size: 12.5px; font-weight: 500; cursor:pointer;
+  background: var(--btn-bg); color: var(--text-main);
+  border: 1px solid var(--btn-border);
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease, box-shadow .18s ease;
+  clip-path: polygon(
+    0 var(--notch), var(--notch) 0,
+    calc(100% - var(--notch)) 0, 100% var(--notch),
+    100% calc(100% - var(--notch)), calc(100% - var(--notch)) 100%,
+    var(--notch) 100%, 0 calc(100% - var(--notch))
+  );
+  box-shadow: 0 6px 16px rgba(0,0,0,0.28), inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+/* 常驻轻微流光（克制） */
+.action-btn-silent::before{
+  content:""; position:absolute; inset:0;
+  background: linear-gradient(120deg, rgba(255,255,255,0), rgba(255,255,255,0.05), rgba(255,255,255,0));
+  background-size: 200% 100%;
+  opacity: .06; pointer-events: none; mix-blend-mode: overlay;
+  animation: sheen 9s linear infinite;
+}
+@keyframes sheen { 0%{ background-position: 0% 0; } 100%{ background-position: 200% 0; } }
+
+.action-btn-silent:hover{
+  background: var(--btn-hover);
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+.action-btn-silent:active{
+  background: var(--btn-active);
+  transform: translateY(0);
+}
+.action-btn-silent:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 18px rgba(0,0,0,0.32);
+}
+
+/* 选中态：更暗、柔和微动效 + 实心方块标记（右侧中部） */
+@keyframes nova-select-soft {
+  0% { box-shadow: inset 0 0 0 0 rgba(42,168,255,0), 0 6px 16px rgba(0,0,0,0.28); transform: translateY(0); }
+  60% { box-shadow: inset 0 0 18px var(--btn-active-glow), 0 6px 16px rgba(0,0,0,0.28); }
+  100% { box-shadow: inset 0 0 10px var(--btn-active-glow), 0 6px 16px rgba(0,0,0,0.28); }
+}
+.action-btn-silent.active {
+  background: linear-gradient(180deg, #162d4a 0%, #132745 100%);
+  border-color: var(--btn-border-active);
+  transform: translateY(0);
+  animation: nova-select-soft .18s ease-out both;
+}
+/* 实心方块标记 */
+.action-btn-silent.active::after{
+  content: "";
+  position: absolute;
+  right: 12px; top: 50%;
+  width: 10px; height: 10px; transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(42,168,255,0.16), 0 0 10px rgba(42,168,255,0.22);
+  opacity: 0.95;
+}
+
+/* Tips + 确认 一体化底栏 */
+.tips-panel{
+  position: sticky; bottom: 0; z-index: 2;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px;
+  margin-top: 12px; padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(12,22,40,0.72), rgba(9,16,30,0.86));
+  border: 1px solid var(--line-weak);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 -6px 20px rgba(0,0,0,0.28);
+  clip-path: polygon(
+    0 var(--notch), var(--notch) 0,
+    calc(100% - var(--notch)) 0, 100% var(--notch),
+    100% calc(100% - var(--notch)), calc(100% - var(--notch)) 100%,
+    var(--notch) 100%, 0 calc(100% - var(--notch))
+  );
+  backdrop-filter: blur(6px);
+  position: sticky;
+}
+/* 顶部轻亮流动线（常驻但很轻） */
+.tips-panel{ position: relative; }
+.tips-panel::before{
+  content: ""; position: absolute; left: 10px; right: 10px; top: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(42,168,255,0.55), transparent);
+  background-size: 200% 100%;
+  animation: aurora-run 7.8s linear infinite;
+  opacity: .55; pointer-events:none;
+}
+@keyframes aurora-run { 0%{ background-position: 0% 0; } 100%{ background-position: 200% 0; } }
+
+.tips-title{
+  font-size: 10.5px; color: rgba(42,168,255,0.8);
+  letter-spacing: 0.45px; margin-bottom: 4px; text-transform: uppercase;
+}
+.tips-content{ font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+
+/* 确认按钮（已去掉飞机图标），与 Tips 同栏 */
+.confirm-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding: 10px 14px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.2px;
+  background: linear-gradient(180deg, #10233c, #0d1e34);
+  color: var(--text-main);
+  border: 1px solid var(--btn-border);
+  border-color: var(--accent-soft);
+  cursor: pointer; min-width: 112px;
+  clip-path: polygon(
+    0 var(--notch), var(--notch) 0,
+    calc(100% - var(--notch)) 0, 100% var(--notch),
+    100% calc(100% - var(--notch)), calc(100% - var(--notch)) 100%,
+    var(--notch) 100%, 0 calc(100% - var(--notch))
+  );
+  box-shadow: 0 8px 22px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.03);
+  transition: transform .15s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.confirm-btn:hover{
+  transform: translateY(-1px);
+  border-color: rgba(42,168,255,0.55);
+  background: linear-gradient(180deg, #132a44, #10233c);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.42), 0 0 0 1px rgba(42,168,255,0.08) inset;
+}
+.confirm-btn:active{
+  transform: translateY(0);
+  background: linear-gradient(180deg, #0f2036, #0c1b2f);
+}
+.confirm-btn:disabled{
+  opacity: 0.5; cursor: not-allowed;
+  transform: none; box-shadow: 0 6px 18px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+
+/* 兼容保留（不再使用的底部确认栏） */
+.confirm-bar{ display: none !important; }
+
+/* 可选：降低动效（无障碍） */
+@media (prefers-reduced-motion: reduce){
+  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* 桌面端真·环绕模式：按钮浮动到文字右侧，面板改为常规块元素 */
+.tips-panel.wrap-mode{
+  position: static;
+  display: block;                 /* 关闭 grid，启用 float */
+}
+.tips-panel.wrap-mode .confirm-btn{
+  float: right;
+  margin: 6px 0 0 14px;           /* 文字与按钮间距 */
+}
+.tips-panel.wrap-mode::after{
+  content: "";
+  display: block;
+  clear: both;                    /* 清除浮动，撑开容器高度 */
+}
+
+/* 移动端仍保持原先吸底 + 居中 */
+@media (max-width: 879px){
+  .tips-panel{
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .tips-panel .confirm-btn{
+    justify-self: center;
+  }
+}
+</style>
+</head>
+<body>
+<div class="nova-silent-sky nova-container nova-needs-init">
+  <details class="mystic-card-silent" open>
+    <summary class="card-header">
+      <div class="card-header-main">
+        <div class="card-title">$1</div>
+        <div class="card-subtle">GrayWill · Decision</div>
+      </div>
+      <div class="toggle-text">收起</div>
+    </summary>
+    <div class="card-content-wrapper">
+      <div class="button-group-silent"></div>
+
+      <!-- Tips 与 确认按钮将被融合在这个区域 -->
+      <div class="tips-panel" style="display: none;">
+        <div>
+          <div class="tips-title">TIPS</div>
+          <div class="tips-content">$3</div>
+        </div>
+        <button class="confirm-btn" type="button" disabled>确认发送</button>
+      </div>
+
+      <!-- 旧的确认栏保留占位但不再显示（JS会移除） -->
+      <div class="confirm-bar" aria-label="确认操作区域" style="display:none;">
+        <button class="confirm-btn" type="button" disabled>确认发送</button>
+      </div>
+    </div>
+    <div class="nova-options-data" style="display:none;">$2</div>
+  </details>
+</div>
+
+<script>
+(function() {
+  if (typeof window.initializeNovaOptions === 'undefined') {
+    window.initializeNovaOptions = function() {
+      const containersToProcess = document.querySelectorAll('.nova-container.nova-needs-init');
+
+      containersToProcess.forEach(container => {
+        const detailsElement = container.querySelector('.mystic-card-silent');
+        const buttonGroup = container.querySelector('.button-group-silent');
+        let tipsPanel = container.querySelector('.tips-panel');
+        let tipsContent = container.querySelector('.tips-content');
+        const toggleText = container.querySelector('.toggle-text');
+
+        // 移除旧的确认栏（融合到 Tips 内）
+        const legacyConfirmBar = container.querySelector('.confirm-bar');
+        if (legacyConfirmBar) legacyConfirmBar.remove();
+
+        // 1) 折叠文本切换
+        if (detailsElement && toggleText) {
+          detailsElement.addEventListener('toggle', () => {
+            toggleText.textContent = detailsElement.open ? '收起' : '展开';
+          });
+        }
+
+        // Helper：获取父页 textarea
+        const getInputEl = () => {
+          try {
+            return window.parent?.document?.querySelector('#send_textarea') || document.querySelector('#send_textarea');
+          } catch (e) { return null; }
+        };
+
+        // Helper：获取当前选中文本数组
+        const getSelectedTexts = (currentButtonGroup) => {
+          const activeButtons = currentButtonGroup.querySelectorAll('.action-btn-silent.active');
+          return Array.from(activeButtons).map(btn => btn.getAttribute('data-action') || '').filter(Boolean);
+        };
+
+        // Helper：获取当前消息（优先读取输入框）
+        const getCurrentMessage = (currentButtonGroup) => {
+          const input = getInputEl();
+          const fromInput = input?.value ?? '';
+          if (fromInput && fromInput.trim()) return fromInput;
+          const selectedTexts = getSelectedTexts(currentButtonGroup);
+          return selectedTexts.join(' ').trim();
+        };
+
+        // 发送消息 (包含 |/trigger 修复)
+        const sendMessage = (currentButtonGroup) => {
+          const message = getCurrentMessage(currentButtonGroup);
+          if (!message) return;
+
+          try {
+            const runSlash = (typeof window.triggerSlash === 'function')
+              ? window.triggerSlash
+              : (typeof window.parent?.triggerSlash === 'function' ? window.parent.triggerSlash : null);
+
+            if (runSlash) {
+              runSlash(`/send ${message}|/trigger`);
+            } else {
+              // 回退方案
+              const input = getInputEl();
+              if (input) {
+                input.value = message;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                const evt = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true });
+                input.dispatchEvent(evt);
+              } else {
+                console.warn('未找到 triggerSlash 或 #send_textarea，无法自动发送。');
+              }
+            }
+
+            // 体验优化：发送后淡出UI
+            const mainContainer = currentButtonGroup.closest('.nova-container');
+            if (mainContainer) {
+              mainContainer.classList.add('fading-out');
+              setTimeout(() => { mainContainer.style.display = 'none'; }, 260);
+            }
+
+          } catch (e) {
+            console.error('发送消息时出错:', e);
+          }
+        };
+
+        // 如果没有 tips-panel，构造一个（保证按钮有容器可用）
+        if (!tipsPanel) {
+          tipsPanel = document.createElement('div');
+          tipsPanel.className = 'tips-panel';
+          tipsPanel.innerHTML = `
+            <div>
+              <div class="tips-title">TIPS</div>
+              <div class="tips-content"></div>
+            </div>
+            <button class="confirm-btn" type="button" disabled>确认发送</button>
+          `;
+          container.querySelector('.card-content-wrapper')?.appendChild(tipsPanel);
+        }
+
+        // 同步 tipsContent 引用（防止重建）
+        tipsContent = tipsPanel.querySelector('.tips-content');
+
+        // 2) 解析数据并创建按钮
+        if (buttonGroup) {
+          const dataDiv = container.querySelector('.nova-options-data');
+          if (dataDiv) {
+            const rawOptionsText = dataDiv.innerHTML.replace(/<br\\s*\\/?>/gi, '\
+');
+            const optionRegex = /\\d+[\\.。、]\\s*([^\
+\\r]+)/g;
+            let match;
+            let optionIndex = 1;
+
+            while ((match = optionRegex.exec(rawOptionsText)) !== null) {
+              const optionText = (match[1] || '').trim();
+              if (optionText) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn-silent';
+                btn.setAttribute('data-action', optionText);
+                btn.textContent = `${optionIndex}. ${optionText}`;
+
+                btn.addEventListener('click', (event) => {
+                  event.preventDefault();
+                  btn.classList.toggle('active');
+                  const currentButtonGroup = btn.closest('.button-group-silent');
+                  if (currentButtonGroup) updateUI(currentButtonGroup);
+                });
+
+                buttonGroup.appendChild(btn);
+                optionIndex++;
+              }
+            }
+            dataDiv.remove();
+          }
+        }
+
+        // 3) TIPS 显示控制：如果有文本则展示标题，否则只保留操作栏
+        const tipsTitle = tipsPanel.querySelector('.tips-title');
+        const tipsHasText = tipsContent && tipsContent.textContent.trim().length > 0;
+        if (!tipsHasText && tipsTitle) tipsTitle.style.display = 'none';
+        tipsPanel.style.display = 'grid';
+
+        // 4) 初始化确认按钮（融合到 tips-panel）
+        let confirmBtn = tipsPanel.querySelector('.confirm-btn');
+        if (!confirmBtn) {
+          confirmBtn = document.createElement('button');
+          confirmBtn.className = 'confirm-btn';
+          confirmBtn.type = 'button';
+          confirmBtn.textContent = '确认发送';
+          confirmBtn.disabled = true;
+          tipsPanel.appendChild(confirmBtn);
+        }
+        confirmBtn.addEventListener('click', () => {
+          const currentButtonGroup = container.querySelector('.button-group-silent');
+          if (currentButtonGroup) sendMessage(currentButtonGroup);
+        });
+
+        // 统一更新输入框 & 按钮状态
+        const updateUI = (currentButtonGroup) => {
+          const input = getInputEl();
+          const selectedTexts = getSelectedTexts(currentButtonGroup);
+          const message = selectedTexts.join(' ');
+
+          if (input) {
+            input.value = message;
+            input.focus();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+
+          if (confirmBtn) {
+            const hasText = (input?.value ?? message).trim().length > 0;
+            confirmBtn.disabled = !hasText;
+          }
+        };
+
+        // —— 真·文字环绕：宽屏将按钮移入 tips-content 并浮动 —— //
+        const setupResponsiveWrap = () => {
+          if (!tipsPanel || !tipsContent || !confirmBtn) return;
+
+          const apply = () => {
+            if (window.innerWidth >= 880) {
+              // 桌面：进入环绕模式
+              tipsPanel.classList.add('wrap-mode');
+              if (!tipsContent.contains(confirmBtn)) {
+                // 将按钮插入到文字块的开头，让后续文字环绕
+                tipsContent.insertAdjacentElement('afterbegin', confirmBtn);
+              }
+            } else {
+              // 移动端：恢复为吸底+居中
+              tipsPanel.classList.remove('wrap-mode');
+              if (confirmBtn.parentElement !== tipsPanel) {
+                tipsPanel.appendChild(confirmBtn);
+              }
+            }
+          };
+
+          apply();
+          let raf;
+          window.addEventListener('resize', () => {
+            cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(apply);
+          });
+        };
+
+        setupResponsiveWrap();
+
+        // 首次更新
+        updateUI(buttonGroup);
+        container.classList.remove('nova-needs-init');
+      });
+    };
+  }
+  window.initializeNovaOptions();
+})();
+</script>
+</body>
+</html>
+
